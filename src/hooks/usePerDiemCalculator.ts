@@ -80,9 +80,9 @@ export const usePerDiemCalculator = ({
         // Single day trip: calculate hours between departure and arrival
         hoursOnThisDay = differenceInHours(arrivalDateTime, departureDateTime);
       } else if (isFirstDay) {
-        // First day: from departure time until midnight
-        const endOfDay = setMinutes(setHours(new Date(currentDate), 23), 59);
-        hoursOnThisDay = differenceInHours(endOfDay, departureDateTime);
+        // First day: from departure time until midnight (00:00 of next day)
+        const midnightNextDay = setMinutes(setHours(addDays(new Date(currentDate), 1), 0), 0);
+        hoursOnThisDay = differenceInHours(midnightNextDay, departureDateTime);
       } else if (isLastDay) {
         // Last day: from midnight until arrival time
         const startOfDay = setMinutes(setHours(new Date(currentDate), 0), 0);
