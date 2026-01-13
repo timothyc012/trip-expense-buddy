@@ -13,8 +13,7 @@ import {
   addDays, 
   format, 
   setHours, 
-  setMinutes,
-  isSameDay 
+  setMinutes
 } from 'date-fns';
 
 const MILEAGE_RATE = 0.30; // €/km
@@ -107,7 +106,8 @@ export const usePerDiemCalculator = ({
       }
 
       // Calculate meal deductions based on full day rate
-      const dayMeal = dayMeals.find(dm => isSameDay(new Date(dm.date), currentDate));
+      // Find meal data by index (more reliable than date comparison)
+      const dayMeal = dayMeals[i];
       let mealDeduction = 0;
 
       if (dayMeal && basePerDiem > 0) {
