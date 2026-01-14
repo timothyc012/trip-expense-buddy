@@ -11,8 +11,17 @@ export interface TravelInfo {
 
 export interface TransportInfo {
   type: 'car' | 'public' | 'plane' | 'other';
+  route?: string; // Route description for car travel
   kilometers?: number;
   otherCosts?: number;
+}
+
+export interface OtherExpense {
+  id: string;
+  description: string;
+  amount: number;
+  receiptFile?: File;
+  receiptFileName?: string;
 }
 
 export interface DayMeals {
@@ -42,6 +51,7 @@ export interface DayCalculation {
 
 export interface ExpenseCalculation {
   transportCost: number;
+  otherExpensesTotal: number;
   totalPerDiem: number;
   totalMealDeduction: number;
   netPerDiem: number;
@@ -53,5 +63,6 @@ export interface ExpenseCalculation {
 export interface ExpenseFormData {
   travelInfo: TravelInfo;
   transportInfo: TransportInfo;
+  otherExpenses: OtherExpense[];
   dayMeals: DayMeals[];
 }

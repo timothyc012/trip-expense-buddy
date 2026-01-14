@@ -2,6 +2,7 @@ import React from 'react';
 import { useForm } from 'react-hook-form';
 import { TravelInfoForm } from '@/components/expense/TravelInfoForm';
 import { TransportForm } from '@/components/expense/TransportForm';
+import { OtherExpensesForm } from '@/components/expense/OtherExpensesForm';
 import { MealDeductionForm } from '@/components/expense/MealDeductionForm';
 import { ResultDisplay } from '@/components/expense/ResultDisplay';
 import { usePerDiemCalculator } from '@/hooks/usePerDiemCalculator';
@@ -23,9 +24,11 @@ const Index = () => {
       },
       transportInfo: {
         type: 'car',
+        route: '',
         kilometers: 0,
         otherCosts: 0,
       },
+      otherExpenses: [],
       dayMeals: [],
     },
   });
@@ -45,6 +48,7 @@ const Index = () => {
   const calculation = usePerDiemCalculator({
     travelInfo,
     transportInfo,
+    otherExpenses: watchedValues.otherExpenses || [],
     dayMeals: watchedValues.dayMeals || [],
   });
 
@@ -78,6 +82,7 @@ const Index = () => {
           <div className="space-y-6">
             <TravelInfoForm form={form} />
             <TransportForm form={form} />
+            <OtherExpensesForm form={form} />
             <MealDeductionForm 
               form={form} 
               departureDate={departureDate}
@@ -90,6 +95,7 @@ const Index = () => {
               calculation={calculation}
               travelInfo={travelInfo}
               transportInfo={transportInfo}
+              otherExpenses={watchedValues.otherExpenses || []}
             />
           </div>
         </div>

@@ -4,7 +4,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Car, Train, Plane, HelpCircle } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { Car, Train, Plane, HelpCircle, Route } from 'lucide-react';
 
 interface TransportFormProps {
   form: UseFormReturn<any>;
@@ -71,24 +72,38 @@ export const TransportForm: React.FC<TransportFormProps> = ({ form }) => {
         </div>
 
         {transportType === 'car' && (
-          <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
-            <Label htmlFor="kilometers" className="flex items-center gap-2">
-              Gefahrene Kilometer
-              <span className="text-xs text-muted-foreground">(× 0,30 €/km)</span>
-            </Label>
-            <div className="relative">
-              <Input
-                id="kilometers"
-                type="number"
-                min="0"
-                step="1"
-                placeholder="0"
-                {...register('transportInfo.kilometers', { valueAsNumber: true })}
-                className="pr-12"
+          <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="space-y-2">
+              <Label htmlFor="route" className="flex items-center gap-2">
+                <Route className="h-4 w-4" />
+                Fahrstrecke
+              </Label>
+              <Textarea
+                id="route"
+                placeholder="z.B. München - Stuttgart - München"
+                {...register('transportInfo.route')}
+                className="min-h-[60px]"
               />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                km
-              </span>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="kilometers" className="flex items-center gap-2">
+                Gefahrene Kilometer
+                <span className="text-xs text-muted-foreground">(× 0,30 €/km)</span>
+              </Label>
+              <div className="relative">
+                <Input
+                  id="kilometers"
+                  type="number"
+                  min="0"
+                  step="1"
+                  placeholder="0"
+                  {...register('transportInfo.kilometers', { valueAsNumber: true })}
+                  className="pr-12"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                  km
+                </span>
+              </div>
             </div>
           </div>
         )}

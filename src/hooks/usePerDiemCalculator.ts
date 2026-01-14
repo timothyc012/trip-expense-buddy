@@ -3,6 +3,7 @@ import {
   TravelInfo, 
   TransportInfo, 
   DayMeals, 
+  OtherExpense,
   ExpenseCalculation, 
   DayCalculation 
 } from '@/types/expense';
@@ -28,6 +29,7 @@ const MEAL_DEDUCTION_RATES = {
 interface UsePerDiemCalculatorProps {
   travelInfo: TravelInfo | null;
   transportInfo: TransportInfo | null;
+  otherExpenses: OtherExpense[];
   dayMeals: DayMeals[];
 }
 
@@ -44,6 +46,7 @@ const getDateTimeFromDateAndTime = (date: Date, timeString: string): Date => {
 export const usePerDiemCalculator = ({
   travelInfo,
   transportInfo,
+  otherExpenses,
   dayMeals,
 }: UsePerDiemCalculatorProps): ExpenseCalculation | null => {
   return useMemo(() => {
@@ -152,8 +155,11 @@ export const usePerDiemCalculator = ({
       }
     }
 
+    // Calculate other expenses total
+    const otherExpensesTotal = otherExpenses.reduce((sum, expense) => sum + (expense.amount || 0), 0);
+
     const netPerDiem = Math.max(0, totalPerDiem - totalMealDeduction);
-    const totalAmount = transportCost + netPerDiem;
+    const totalAmount = transportCost + otherExpensesTotal + netPerDiem;
 
     // Generate document name: ter_[name]_[date]
     const formattedDate = format(departureDate, 'yyyy-MM-dd');
@@ -162,6 +168,7 @@ export const usePerDiemCalculator = ({
 
     return {
       transportCost,
+      otherExpensesTotal,
       totalPerDiem,
       totalMealDeduction,
       netPerDiem,
@@ -169,5 +176,5 @@ export const usePerDiemCalculator = ({
       dayBreakdown,
       documentName,
     };
-  }, [travelInfo, transportInfo, dayMeals]);
+  }, [travelInfo, transportInfo, otherExpenses, dayMeals]);
 };
