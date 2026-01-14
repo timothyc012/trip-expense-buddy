@@ -17,10 +17,29 @@ interface TravelInfoFormProps {
   form: UseFormReturn<any>;
 }
 
+// Generate time options in AM/PM format
+const generateTimeOptions = () => {
+  const options: { value: string; label: string }[] = [];
+  for (let hour = 0; hour < 24; hour++) {
+    for (let minute = 0; minute < 60; minute += 30) {
+      const value = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+      const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+      const ampm = hour < 12 ? 'AM' : 'PM';
+      const label = `${displayHour}:${minute.toString().padStart(2, '0')} ${ampm}`;
+      options.push({ value, label });
+    }
+  }
+  return options;
+};
+
+const timeOptions = generateTimeOptions();
+
 export const TravelInfoForm: React.FC<TravelInfoFormProps> = ({ form }) => {
   const countryOptions = getCountryOptions();
   const { register, setValue, watch } = form;
   const selectedCountry = watch('travelInfo.country');
+  const departureTime = watch('travelInfo.departureTime');
+  const arrivalTime = watch('travelInfo.arrivalTime');
 
   return (
     <Card>
@@ -111,11 +130,21 @@ export const TravelInfoForm: React.FC<TravelInfoFormProps> = ({ form }) => {
               <Clock className="h-4 w-4" />
               Abfahrtszeit
             </Label>
-            <Input
-              id="departureTime"
-              type="time"
-              {...register('travelInfo.departureTime')}
-            />
+            <Select
+              value={departureTime}
+              onValueChange={(value) => setValue('travelInfo.departureTime', value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Zeit auswählen" />
+              </SelectTrigger>
+              <SelectContent className="max-h-[300px]">
+                {timeOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
@@ -137,11 +166,21 @@ export const TravelInfoForm: React.FC<TravelInfoFormProps> = ({ form }) => {
               <Clock className="h-4 w-4" />
               Rückkehrzeit
             </Label>
-            <Input
-              id="arrivalTime"
-              type="time"
-              {...register('travelInfo.arrivalTime')}
-            />
+            <Select
+              value={arrivalTime}
+              onValueChange={(value) => setValue('travelInfo.arrivalTime', value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Zeit auswählen" />
+              </SelectTrigger>
+              <SelectContent className="max-h-[300px]">
+                {timeOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </CardContent>
