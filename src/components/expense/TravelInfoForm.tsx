@@ -2,16 +2,33 @@ import React from 'react';
 import { UseFormReturn } from 'react-hook-form';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
 } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { getCountryOptions } from '@/data/perDiemRates';
-import { User, MapPin, Calendar, Clock, Plane } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { PER_DIEM_DATA } from '@/constants/perDiemData';
+import { User, MapPin, Calendar, Clock, Plane, Check, ChevronsUpDown } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { useState } from 'react';
 
 interface TravelInfoFormProps {
   form: UseFormReturn<any>;
@@ -29,13 +46,14 @@ const generateTimeOptions = () => {
       options.push({ value, label });
     }
   }
+  options.push({ value: '24:00', label: '24:00 (Mitternacht)' });
   return options;
 };
 
 const timeOptions = generateTimeOptions();
 
 export const TravelInfoForm: React.FC<TravelInfoFormProps> = ({ form }) => {
-  const countryOptions = getCountryOptions();
+  const [open, setOpen] = useState(false);
   const { register, setValue, watch } = form;
   const selectedCountry = watch('travelInfo.country');
   const departureTime = watch('travelInfo.departureTime');
@@ -61,6 +79,16 @@ export const TravelInfoForm: React.FC<TravelInfoFormProps> = ({ form }) => {
             placeholder="Max Mustermann"
             {...register('travelInfo.travelerName')}
           />
+          <div className="flex items-center space-x-2 pt-2">
+            <Checkbox
+              id="isExpat"
+              onCheckedChange={(checked) => setValue('travelInfo.isExpat', checked)}
+              checked={watch('travelInfo.isExpat')}
+            />
+            <Label htmlFor="isExpat" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+              Expat (Zusätzlicher Abzug Mo-Fr)
+            </Label>
+          </div>
         </div>
 
         {/* Purpose */}
@@ -89,26 +117,69 @@ export const TravelInfoForm: React.FC<TravelInfoFormProps> = ({ form }) => {
 
           <div className="space-y-2">
             <Label htmlFor="country">Land</Label>
-            <Select
-              value={selectedCountry}
-              onValueChange={(value) => setValue('travelInfo.country', value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Land auswählen" />
-              </SelectTrigger>
-              <SelectContent>
-                {countryOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    <span className="flex items-center justify-between w-full">
-                      <span>{option.label}</span>
-                      <span className="text-xs text-muted-foreground ml-2">
-                        ({option.fullDay}€/{option.partialDay}€)
-                      </span>
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover open={open} onOpenChange={setOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={open}
+                  className="w-full justify-between"
+                >
+                  {selectedCountry ? (
+                    (() => {
+                      const parts = selectedCountry.split('|');
+                      const cName = parts[0];
+                      const cCity = parts[1];
+                      return cCity && cCity !== 'Standard'
+                        ? `${cName} - ${cCity}`
+                        : cName;
+                    })()
+                  ) : (
+                    "Land auswählen..."
+                  )}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[300px] p-0">
+                <Command>
+                  <CommandInput placeholder="Land suchen..." />
+                  <CommandList>
+                    <CommandEmpty>Kein Land gefunden.</CommandEmpty>
+                    <CommandGroup>
+                      {PER_DIEM_DATA.map((data) => {
+                        const value = `${data.country}|${data.city}`;
+                        const label = data.city !== 'Standard'
+                          ? `${data.country} - ${data.city}`
+                          : data.country;
+                        return (
+                          <CommandItem
+                            key={value}
+                            value={label} // Search by label content
+                            onSelect={() => {
+                              setValue('travelInfo.country', value);
+                              setOpen(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                selectedCountry === value ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            <div className="flex flex-col">
+                              <span>{label}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {data.fullDay}€ / {data.partialDay}€
+                              </span>
+                            </div>
+                          </CommandItem>
+                        );
+                      })}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
 

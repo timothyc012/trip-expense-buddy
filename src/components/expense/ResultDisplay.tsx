@@ -3,20 +3,20 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from '@/components/ui/table';
 import { ExpenseCalculation, TravelInfo, TransportInfo, OtherExpense } from '@/types/expense';
 import { generateExpensePDF } from '@/utils/pdfGenerator';
-import { getPerDiemRate } from '@/data/perDiemRates';
+import { getRateFromValue } from '@/constants/perDiemData';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { FileDown, Calculator, Car, UtensilsCrossed, Receipt, Upload, Image } from 'lucide-react';
+import { FileDown, Calculator, Car, UtensilsCrossed, Receipt, Upload, Image as ImageIcon } from 'lucide-react';
 
 interface ResultDisplayProps {
   calculation: ExpenseCalculation | null;
@@ -25,8 +25,8 @@ interface ResultDisplayProps {
   otherExpenses?: OtherExpense[];
 }
 
-export const ResultDisplay: React.FC<ResultDisplayProps> = ({ 
-  calculation, 
+export const ResultDisplay: React.FC<ResultDisplayProps> = ({
+  calculation,
   travelInfo,
   transportInfo,
   otherExpenses = []
@@ -53,7 +53,7 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({
     );
   }
 
-  const rate = getPerDiemRate(travelInfo.country);
+  const rate = getRateFromValue(travelInfo.country);
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -102,12 +102,8 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({
                 onClick={() => fileInputRef.current?.click()}
                 className="gap-2"
               >
-                <Image className="h-4 w-4" />
+                <ImageIcon className="h-4 w-4" />
                 {logoFileName ? 'Logo ändern' : 'Logo'}
-              </Button>
-              <Button onClick={handleDownloadPDF} size="sm" className="gap-2">
-                <FileDown className="h-4 w-4" />
-                PDF
               </Button>
             </div>
           </div>
@@ -131,7 +127,7 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({
                 {calculation.transportCost.toFixed(2)} €
               </div>
             </div>
-            
+
             <div className="space-y-1">
               <div className="flex items-center gap-1 text-xs text-muted-foreground">
                 <Receipt className="h-3 w-3" />
@@ -141,7 +137,7 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({
                 {calculation.otherExpensesTotal.toFixed(2)} €
               </div>
             </div>
-            
+
             <div className="space-y-1">
               <div className="text-xs text-muted-foreground">
                 Tagegeld
@@ -150,7 +146,7 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({
                 {calculation.totalPerDiem.toFixed(2)} €
               </div>
             </div>
-            
+
             <div className="space-y-1">
               <div className="flex items-center gap-1 text-xs text-muted-foreground">
                 <UtensilsCrossed className="h-3 w-3" />
@@ -170,6 +166,11 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({
               {calculation.totalAmount.toFixed(2)} €
             </div>
           </div>
+
+          <Button onClick={handleDownloadPDF} className="w-full gap-2 mt-4" size="lg">
+            <FileDown className="h-5 w-5" />
+            PDF herunterladen
+          </Button>
         </CardContent>
       </Card>
 
@@ -177,7 +178,7 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({
       <Card>
         <CardHeader className="pb-4">
           <CardTitle className="text-lg">
-            Verpflegungsmehraufwand ({rate.country})
+            Verpflegungsmehraufwand ({rate.country}{rate.city !== 'Standard' ? `, ${rate.city}` : ''})
           </CardTitle>
           <p className="text-xs text-muted-foreground">
             Tagessätze: {rate.fullDay}€ (24h) / {rate.partialDay}€ (8-24h)

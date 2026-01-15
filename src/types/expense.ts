@@ -7,6 +7,7 @@ export interface TravelInfo {
   departureTime: string;
   arrivalDate: Date;
   arrivalTime: string;
+  isExpat?: boolean;
 }
 
 export interface TransportInfo {

@@ -1,214 +1,133 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { ExpenseCalculation, TravelInfo, TransportInfo, OtherExpense } from '@/types/expense';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { getPerDiemRate } from '@/data/perDiemRates';
-
-// Convert 24h time to AM/PM format
-const formatTimeAmPm = (time24: string): string => {
-  const [hours, minutes] = time24.split(':').map(Number);
-  const displayHour = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
-  const ampm = hours < 12 ? 'AM' : 'PM';
-  return `${displayHour}:${minutes.toString().padStart(2, '0')} ${ampm}`;
-};
+import { ExpenseCalculation, TravelInfo, TransportInfo, OtherExpense } from '@/types/expense';
 
 export const generateExpensePDF = (
   calculation: ExpenseCalculation,
   travelInfo: TravelInfo,
   transportInfo: TransportInfo | null,
   otherExpenses: OtherExpense[] = [],
-  companyLogoBase64?: string
-): void => {
+  companyLogo?: string
+) => {
   const doc = new jsPDF();
-  const rate = getPerDiemRate(travelInfo.country);
+  const { travelerName, purpose, destination, country, departureDate, arrivalDate } = travelInfo;
 
-  let startY = 20;
-
-  // Company Logo (if provided)
-  if (companyLogoBase64) {
+  // Logo if available
+  if (companyLogo) {
     try {
-      doc.addImage(companyLogoBase64, 'PNG', 15, 10, 60, 30);
-      startY = 50;
+      doc.addImage(companyLogo, 'JPEG', 14, 10, 30, 15);
     } catch (e) {
-      console.error('Error adding logo to PDF:', e);
+      console.error("Error adding logo", e);
     }
   }
 
   // Title
-  doc.setFontSize(18);
-  doc.text('Reisekostenabrechnung / Travel Expense Report', 105, startY, { align: 'center' });
+  doc.setFontSize(20);
+  doc.text('Reisekostenabrechnung', 14, 30);
 
-  // Document info
   doc.setFontSize(10);
-  doc.text(`Dokument / Document: ${calculation.documentName}`, 20, startY + 15);
-  doc.text(`Erstellt am / Created on: ${format(new Date(), 'dd.MM.yyyy', { locale: de })}`, 20, startY + 22);
+  doc.text(`Erstellt am: ${format(new Date(), 'dd.MM.yyyy HH:mm')}`, 14, 38);
 
-  // Travel information section
-  doc.setFontSize(12);
-  doc.text('Reiseinformationen / Travel Information', 20, startY + 35);
-  
-  doc.setFontSize(10);
+  // Travel Info Section
   const travelInfoData = [
-    ['Reisender / Traveler', travelInfo.travelerName],
-    ['Reisezweck / Purpose', travelInfo.purpose],
-    ['Reiseziel / Destination', `${travelInfo.destination}, ${rate.country}`],
-    ['Abfahrt / Departure', `${format(travelInfo.departureDate, 'dd.MM.yyyy', { locale: de })} ${formatTimeAmPm(travelInfo.departureTime)}`],
-    ['Ankunft / Arrival', `${format(travelInfo.arrivalDate, 'dd.MM.yyyy', { locale: de })} ${formatTimeAmPm(travelInfo.arrivalTime)}`],
+    ['Name:', travelerName],
+    ['Zweck:', purpose],
+    ['Ziel:', `${destination}, ${country}`],
+    ['Zeitraum:', `${format(departureDate, 'dd.MM.yyyy')} - ${format(arrivalDate, 'dd.MM.yyyy')}`],
   ];
 
   autoTable(doc, {
-    startY: startY + 40,
-    head: [],
+    startY: 45,
+    head: [['Reiseinformationen', '']],
     body: travelInfoData,
     theme: 'plain',
+    styles: { fontSize: 10 },
     columnStyles: {
       0: { fontStyle: 'bold', cellWidth: 40 },
-      1: { cellWidth: 'auto' },
+      1: { cellWidth: 'auto' }
     },
+    headStyles: { fillColor: [220, 220, 220], textColor: 0, fontStyle: 'bold' }
   });
 
-  // Transport section
-  let currentY = (doc as any).lastAutoTable.finalY + 15;
-  doc.setFontSize(12);
-  doc.text('Fahrtkosten / Transport Costs', 20, currentY);
-  
-  const transportData: string[][] = [];
-  if (transportInfo?.type === 'car' && transportInfo.kilometers) {
-    if (transportInfo.route) {
-      transportData.push([
-        'Fahrstrecke / Route',
-        transportInfo.route,
-        '',
-      ]);
-    }
-    transportData.push([
-      'PKW-Fahrten / Car Travel',
-      `${transportInfo.kilometers} km × 0,30 €/km`,
-      `${calculation.transportCost.toFixed(2)} €`,
-    ]);
-  } else if (transportInfo?.otherCosts) {
-    transportData.push([
-      'Sonstige Fahrtkosten / Other Transport',
-      '',
-      `${calculation.transportCost.toFixed(2)} €`,
-    ]);
-  } else {
-    transportData.push(['Keine Fahrtkosten / No Transport Costs', '', '0,00 €']);
-  }
+  // Daily Breakdown Table
+  const dailyRows = calculation.dayBreakdown.map((day) => [
+    format(day.date, 'dd.MM.yyyy', { locale: de }),
+    `${day.hours} Std.`,
+    `${day.basePerDiem.toFixed(2)} €`,
+    day.mealDeduction > 0 ? `-${day.mealDeduction.toFixed(2)} €` : '-',
+    `${day.netPerDiem.toFixed(2)} €`
+  ]);
 
   autoTable(doc, {
-    startY: currentY + 5,
-    head: [['Art / Type', 'Berechnung / Calculation', 'Betrag / Amount']],
-    body: transportData,
-    theme: 'striped',
-    headStyles: { fillColor: [66, 66, 66] },
+    startY: (doc as any).lastAutoTable.finalY + 10,
+    head: [['Datum', 'Dauer', 'Pauschale', 'Kürzung', 'Netto']],
+    body: dailyRows,
+    theme: 'grid',
+    headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+    styles: { fontSize: 9 },
   });
 
-  // Other expenses section (if any)
+  // Summary Data Builder
+  const summaryData = [
+    ['Summe Verpflegungsmehraufwand:', `${calculation.totalPerDiem.toFixed(2)} €`],
+    ['Summe Kürzungen:', `-${calculation.totalMealDeduction.toFixed(2)} €`],
+    ['Netto Verpflegungsmehraufwand:', `${calculation.netPerDiem.toFixed(2)} €`],
+  ];
+
+  // Add Transport items if they exist
+  if (transportInfo) {
+    if (transportInfo.type === 'car' && transportInfo.kilometers) {
+      summaryData.push(['Fahrtkosten (PKW):', `${calculation.transportCost.toFixed(2)} €`]);
+    } else if (transportInfo.otherCosts) {
+      summaryData.push(['Fahrtkosten (ÖPNV/Flug/Bahn):', `${calculation.transportCost.toFixed(2)} €`]);
+    }
+  }
+
+  // Add Other Expenses if they exist
   if (otherExpenses.length > 0) {
-    currentY = (doc as any).lastAutoTable.finalY + 15;
-    doc.setFontSize(12);
-    doc.text('Sonstige Kosten / Other Expenses', 20, currentY);
+    summaryData.push(['Sonstige Ausgaben:', `${calculation.otherExpensesTotal.toFixed(2)} €`]);
+  }
 
-    const otherExpensesData = otherExpenses.map((expense) => [
-      expense.description || 'Ohne Beschreibung / No Description',
-      expense.receiptFileName ? `Beleg / Receipt: ${expense.receiptFileName}` : 'Kein Beleg / No Receipt',
-      `${expense.amount.toFixed(2)} €`,
-    ]);
+  // Total
+  summaryData.push(['Gesamtauszahlung:', `${calculation.totalAmount.toFixed(2)} €`]);
 
-    // Add total row
-    otherExpensesData.push([
-      'Summe / Total',
-      '',
-      `${calculation.otherExpensesTotal.toFixed(2)} €`,
-    ]);
+  // Summary Table
+  const summaryY = (doc as any).lastAutoTable.finalY + 10;
+
+  autoTable(doc, {
+    startY: summaryY,
+    body: summaryData,
+    theme: 'plain',
+    styles: { fontSize: 10, cellPadding: 2 },
+    columnStyles: {
+      0: { fontStyle: 'bold', cellWidth: 120 },
+      1: { halign: 'right' }
+    },
+    didParseCell: function (data) {
+      if (data.row.index === summaryData.length - 1) {
+        data.cell.styles.fontStyle = 'bold';
+        data.cell.styles.textColor = [0, 0, 0]; // Black
+        data.cell.styles.fillColor = [240, 240, 240]; // Light gray background
+      }
+    }
+  });
+
+  // Detailed Expense List (if needed)
+  if (otherExpenses.length > 0) {
+    const expensesData = otherExpenses.map(e => [e.description, `${e.amount.toFixed(2)} €`]);
 
     autoTable(doc, {
-      startY: currentY + 5,
-      head: [['Beschreibung / Description', 'Beleg / Receipt', 'Betrag / Amount']],
-      body: otherExpensesData,
+      startY: (doc as any).lastAutoTable.finalY + 10,
+      head: [['Sonstige Ausgaben Details', 'Betrag']],
+      body: expensesData,
       theme: 'striped',
-      headStyles: { fillColor: [66, 66, 66] },
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [100, 100, 100] }
     });
   }
 
-  // Per diem breakdown
-  currentY = (doc as any).lastAutoTable.finalY + 15;
-  doc.setFontSize(12);
-  doc.text(`Verpflegungsmehraufwand / Per Diem (${rate.country}: ${rate.fullDay}€/${rate.partialDay}€)`, 20, currentY);
-
-  const perDiemData = calculation.dayBreakdown.map((day) => {
-    let dayType = 'Volltag / Full Day';
-    if (day.isFirstDay && day.isLastDay) {
-      dayType = 'Eintägig / Single Day';
-    } else if (day.isFirstDay) {
-      dayType = 'Anreisetag / Departure';
-    } else if (day.isLastDay) {
-      dayType = 'Abreisetag / Return';
-    }
-
-    return [
-      format(day.date, 'dd.MM.yyyy', { locale: de }),
-      dayType,
-      `${Math.round(day.hours)}h`,
-      `${day.basePerDiem.toFixed(2)} €`,
-      `- ${day.mealDeduction.toFixed(2)} €`,
-      `${day.netPerDiem.toFixed(2)} €`,
-    ];
-  });
-
-  autoTable(doc, {
-    startY: currentY + 5,
-    head: [['Datum / Date', 'Tag / Day', 'Stunden / Hours', 'Tagessatz / Rate', 'Kürzung / Deduction', 'Netto / Net']],
-    body: perDiemData,
-    theme: 'striped',
-    headStyles: { fillColor: [66, 66, 66] },
-  });
-
-  // Summary
-  currentY = (doc as any).lastAutoTable.finalY + 15;
-  doc.setFontSize(12);
-  doc.text('Zusammenfassung / Summary', 20, currentY);
-
-  const summaryData = [
-    ['Fahrtkosten / Transport Costs', `${calculation.transportCost.toFixed(2)} €`],
-    ['Sonstige Kosten / Other Expenses', `${calculation.otherExpensesTotal.toFixed(2)} €`],
-    ['Verpflegungsmehraufwand / Per Diem', `${calculation.totalPerDiem.toFixed(2)} €`],
-    ['Kürzung für Mahlzeiten / Meal Deduction', `- ${calculation.totalMealDeduction.toFixed(2)} €`],
-    ['Tagegeld (netto) / Per Diem (net)', `${calculation.netPerDiem.toFixed(2)} €`],
-  ];
-
-  autoTable(doc, {
-    startY: currentY + 5,
-    head: [],
-    body: summaryData,
-    theme: 'plain',
-    columnStyles: {
-      0: { cellWidth: 80 },
-      1: { cellWidth: 40, halign: 'right' },
-    },
-  });
-
-  // Total
-  currentY = (doc as any).lastAutoTable.finalY + 5;
-  doc.setFontSize(14);
-  doc.setFont('helvetica', 'bold');
-  doc.text(`Gesamtbetrag / Total Amount: ${calculation.totalAmount.toFixed(2)} €`, 20, currentY);
-
-  // Signature line
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  doc.text('Unterschrift Reisender / Traveler Signature:', 20, currentY + 30);
-  doc.line(20, currentY + 45, 90, currentY + 45);
-  
-  doc.text('Unterschrift Genehmigung / Approval:', 110, currentY + 30);
-  doc.line(110, currentY + 45, 180, currentY + 45);
-
-  // Footer
-  doc.setFontSize(8);
-  doc.text('Erstellt gemäß deutschen Reisekostenrichtlinien / Created according to German travel expense regulations', 105, 285, { align: 'center' });
-
-  // Save PDF
+  // Save the PDF
   doc.save(`${calculation.documentName}.pdf`);
 };

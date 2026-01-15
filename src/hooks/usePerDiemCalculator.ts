@@ -1,23 +1,27 @@
 import { useMemo } from 'react';
-import { 
-  TravelInfo, 
-  TransportInfo, 
-  DayMeals, 
+import {
+  TravelInfo,
+  TransportInfo,
+  DayMeals,
   OtherExpense,
-  ExpenseCalculation, 
-  DayCalculation 
+  ExpenseCalculation,
+  DayCalculation
 } from '@/types/expense';
-import { getPerDiemRate } from '@/data/perDiemRates';
-import { 
-  differenceInCalendarDays, 
-  differenceInHours, 
-  addDays, 
-  format, 
-  setHours, 
-  setMinutes
+import { PER_DIEM_DATA, getRateFromValue } from '@/constants/perDiemData';
+import {
+  differenceInCalendarDays,
+  differenceInHours,
+  addDays,
+  format,
+  setHours,
+
+  setMinutes,
+  isWeekend,
+  getDay
 } from 'date-fns';
 
 const MILEAGE_RATE = 0.30; // €/km
+const EXPAT_DEDUCTION = 15; // €/day (Mon-Fri)
 
 // Meal deduction rates based on German tax law
 const MEAL_DEDUCTION_RATES = {
@@ -54,14 +58,16 @@ export const usePerDiemCalculator = ({
       return null;
     }
 
-    const { country, departureDate, departureTime, arrivalDate, arrivalTime, travelerName } = travelInfo;
-    const rate = getPerDiemRate(country);
-    
+    const { country, departureDate, departureTime, arrivalDate, arrivalTime, travelerName, isExpat } = travelInfo;
+
+    // Parse country value (Country|City) or fallback to simple find
+    const rate = getRateFromValue(country);
+
     const departureDateTime = getDateTimeFromDateAndTime(departureDate, departureTime || '00:00');
     const arrivalDateTime = getDateTimeFromDateAndTime(arrivalDate, arrivalTime || '23:59');
-    
+
     const totalDays = differenceInCalendarDays(arrivalDate, departureDate) + 1;
-    
+
     if (totalDays < 1) {
       return null;
     }
@@ -123,6 +129,19 @@ export const usePerDiemCalculator = ({
         }
         if (dayMeal.dinner) {
           mealDeduction += rate.fullDay * MEAL_DEDUCTION_RATES.dinner;
+        }
+      }
+
+      // Expat Deduction (15€ Mon-Fri)
+      let expatDeduction = 0;
+      if (isExpat) {
+        // date-fns getDay: 0 = Sun, 1 = Mon, ... 6 = Sat
+        const dayOfWeek = getDay(currentDate);
+        const isWeekendDay = dayOfWeek === 0 || dayOfWeek === 6;
+
+        if (!isWeekendDay) {
+          expatDeduction = EXPAT_DEDUCTION;
+          mealDeduction += expatDeduction;
         }
       }
 
